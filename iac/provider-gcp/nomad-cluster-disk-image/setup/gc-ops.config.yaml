@@ -39,12 +39,17 @@ metrics:
   receivers:
     hostmetrics:
       type: hostmetrics
-      collection_interval: 30s
+      collection_interval: 120s
   processors:
     metrics_filter:
       type: exclude_metrics
       metrics_pattern:
+        # Keep only CPU, Memory, Network, Disk; exclude other hostmetrics groups
         - agent.googleapis.com/processes/*
+        - agent.googleapis.com/filesystem/*
+        - agent.googleapis.com/swap/*
+        - agent.googleapis.com/load/*
+        - agent.googleapis.com/pagefile/*
   service:
     pipelines:
       default_pipeline:

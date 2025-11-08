@@ -41,6 +41,8 @@ terraform {
 data "google_client_config" "default" {}
 
 provider "docker" {
+  host = "unix:///Users/jaychung/.orbstack/run/docker.sock"
+
   registry_auth {
     address  = "${var.gcp_region}-docker.pkg.dev"
     username = "oauth2accesstoken"

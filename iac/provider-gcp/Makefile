@@ -136,6 +136,18 @@ plan-only-jobs/%:
 	$(TF) fmt -recursive
 	@ $(tf_vars) $(TF) plan -out=.tfplan.$(ENV) -compact-warnings -detailed-exitcode -target=module.nomad.nomad_job.$$(echo "$(notdir $@)" | tr '-' '_');
 
+.PHONY: prepare-secrets
+prepare-secrets:
+	@ printf "Preparing secrets for env: `tput setaf 2``tput bold`$(ENV)`tput sgr0`\n"
+	@ printf "This ensures secret values are available in state for subsequent plans/applies\n\n"
+	$(tf_vars) \
+	$(TF) apply \
+	-auto-approve \
+	-input=false \
+	-compact-warnings \
+	-target=module.init \
+	-target=data.google_secret_manager_secret_version.routing_domains
+
 .PHONY: plan-without-jobs
 plan-without-jobs:
 	@ printf "Planning Terraform for env: `tput setaf 2``tput bold`$(ENV)`tput sgr0`\n\n"
@@ -143,6 +155,27 @@ plan-without-jobs:
 	$(tf_vars) \
 	$(TF) plan \
 	-out=.tfplan.$(ENV) \
+	-input=false \
+	-compact-warnings \
+	-parallelism=20 \
+	$(TARGET)
+
+.PHONY: apply-without-jobs
+apply-without-jobs:
+	@ printf "Applying Terraform without jobs for env: `tput setaf 2``tput bold`$(ENV)`tput sgr0` (2-step process)\n\n"
+	@ printf "Step 1/2: Applying secrets and init module...\n"
+	$(tf_vars) \
+	$(TF) apply \
+	-auto-approve \
+	-input=false \
+	-compact-warnings \
+	-target=module.init \
+	-target=data.google_secret_manager_secret_version.routing_domains
+	@ printf "\nStep 2/2: Planning and applying remaining modules...\n"
+	$(eval TARGET := $(shell cat main.tf | grep "^module" | awk '{print $$2}' | tr ' ' '\n' | grep -v -e "nomad" | awk '{print "-target=module." $$0 ""}' | xargs))
+	$(tf_vars) \
+	$(TF) apply \
+	-auto-approve \
 	-input=false \
 	-compact-warnings \
 	-parallelism=20 \
